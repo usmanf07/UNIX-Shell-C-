@@ -5,7 +5,6 @@
 #include <stdio.h>
 using namespace std;
 
-//Tokenize
 void tokenizeSpace(char str[], char** args, int &size)
 {
 	char *token = strtok(str, " ");
@@ -33,7 +32,7 @@ void tokenizePipe(char str[], char** args, int &numPipe)
 		args[i] = token;
 		i++;
 	}
-	numPipe = i - 1;
+	numPipe = i - 2;
 }
 
 void executeCommand(char s[])
@@ -65,8 +64,14 @@ void executeCommand(char s[])
 	}
 }
 
-void executePipeCommand(char** piped1, char** piped2)
+void executePipeCommand(char** args, int numPipes)
 {
+	char * piped1[100];
+	int n1 = 0;
+	char* cmd1 = new char[strlen(args[0]) + 1];
+	strcpy(cmd1, args[0]);
+	tokenizeSpace(cmd1, piped1, n1);
+
 	int pipefd[2];
 	if (pipe(pipefd) < 0) 
 	{
@@ -99,24 +104,33 @@ void executePipeCommand(char** piped1, char** piped2)
 	//Parent Process
 		close(pipefd[1]);
 		wait(NULL);
-		//read
-		retVal2 = fork();
-		if (retVal2 == 0) 
+		int i = 1;
+		while(i < numPipes + 1)
 		{
-			close(0);
-			close(pipefd[1]);
-			dup2(pipefd[0], 0);
-			if (execvp(piped2[0], piped2) < 0) 
+			char * piped2[100];
+			int n2 = 0;
+			char* cmd2 = new char[strlen(args[i]) + 1];
+			strcpy(cmd2, args[i]);
+			tokenizeSpace(cmd2, piped2, n2);
+			retVal2 = fork();
+			if (retVal2 == 0) 
 			{
-				cout<<"Error: Cannot execute the "<<piped2[0]<<" command!";
-				return;
+				close(0);
+				close(pipefd[1]);
+				dup2(pipefd[0], 0);
+				if (execvp(piped2[0], piped2) < 0) 
+				{
+					cout<<"Error: Cannot execute the "<<piped2[0]<<" command!";
+					return;
+				}
+				close(pipefd[0]);
+				exit(0);
+			} 
+			else 
+			{
+				wait(NULL);
 			}
-			close(pipefd[0]);
-			exit(0);
-		} 
-		else 
-		{
-			wait(NULL);
+			i++;
 		}
 	}
 }
@@ -155,22 +169,7 @@ bool PipeCommand(char s[])
 		int i = 0;
 		int n1 = 0;
 		int n2 = 0;
-		while(i < numPipes)
-		{
-			char * piped1[100];
-			char * piped2[100];
-			n1 = 0;
-			n2 = 0;
-			char* cmd1 = new char[strlen(args[i]) + 1];
-			strcpy(cmd1, args[i]);
-			i++;
-			char* cmd2 = new char[strlen(args[i]) + 1];
-			strcpy(cmd2, args[i]);
-			tokenizeSpace(cmd1, piped1, n1);
-			tokenizeSpace(cmd2, piped2, n2);
-			executePipeCommand(piped1, piped2);
-			i++;
-		}
+		executePipeCommand(args, numPipes);
 		return true;
 	}
 
