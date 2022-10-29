@@ -5,6 +5,24 @@
 #include <stdio.h>
 using namespace std;
 
+int getCommandLength(char *args[]){
+    int len = 0;
+    while(args[len] != NULL)
+	{
+        len++;
+    }
+    return len;
+}
+
+char *deleteArgs(char *args[])
+{
+    int len = getCommandLength(args);
+   	for(int i = 0; i < len; i++)
+        args[i] = NULL;
+
+    return *args;
+}
+
 //Tokenize
 void tokenizeSpace(char str[], char** args, int &size)
 {
@@ -33,7 +51,7 @@ void tokenizePipe(char str[], char** args, int &numPipe)
 		args[i] = token;
 		i++;
 	}
-	numPipe = i - 1;
+	numPipe = i - 2;
 }
 
 void executeCommand(char s[])
@@ -65,60 +83,40 @@ void executeCommand(char s[])
 	}
 }
 
-void executePipeCommand(char** piped1, char** piped2)
+void executePipeCommand(char* args[], int inputfd, int outputfd, char output[])
 {
-	int pipefd[2];
-	if (pipe(pipefd) < 0) 
-	{
-		cout<<"Error: Could Not Pipe";
-		return;
-	}
-	pid_t retVal1, retVal2;
-	retVal1 = fork();
-	if(retVal1<0)
+	pid_t retVal;
+	retVal = fork();
+	if(retVal < 0)
 	{
 	//fork Failed
 		cout<<"Error: Could Not Fork";
 		return;
 	}
-	else if(retVal1==0)
+	else if(retVal == 0)
 	{
-	//Child Process 1
-		close(pipefd[0]);
-		dup2(pipefd[1], 1);
-		if (execvp(piped1[0], piped1) < 0) 
+	//Child Process
+		if (inputfd != 0)
 		{
-			cout<<"Error: Cannot execute the "<<piped1[0]<<" command!";
+            close(0);
+			dup(inputfd);
+            close(inputfd);
+        }
+        if (outputfd != 1)
+		{
+            close(1);
+            dup(outputfd);
+            close(outputfd);
+        }
+		
+		if (execvp(args[0], args) < 0) 
+		{
+			cout<<"Error: Cannot execute the "<<args[0]<<" command!";
 			return;
 		}
-		close(pipefd[1]);
-		exit(0);
 	}
-	else
-	{
-	//Parent Process
-		close(pipefd[1]);
-		wait(NULL);
-		//read
-		retVal2 = fork();
-		if (retVal2 == 0) 
-		{
-			close(0);
-			close(pipefd[1]);
-			dup2(pipefd[0], 0);
-			if (execvp(piped2[0], piped2) < 0) 
-			{
-				cout<<"Error: Cannot execute the "<<piped2[0]<<" command!";
-				return;
-			}
-			close(pipefd[0]);
-			exit(0);
-		} 
-		else 
-		{
-			wait(NULL);
-		}
-	}
+	else	//Parent
+		wait(NULL);	
 }
 
 bool checkForPipe(char s[])
@@ -147,30 +145,48 @@ bool PipeCommand(char s[])
 
 	else if(checkForPipe(s))
 	{
+		
 		char *temp = new char[strlen(s) + 1];
 		strcpy(temp, s);
 		char* args[100];
 		int numPipes = 0;
 		tokenizePipe(temp, args, numPipes);
+		char *lastcmd[1024];
+		int lastcmdsize = 0;
+		char * s1 = new char[strlen(args[numPipes]) + 1];
+		strcpy(s1, args[numPipes]);
+		tokenizeSpace(s1, lastcmd, lastcmdsize);
+		
+		int pipefd[2];
+		int pipeInput;
 		int i = 0;
-		int n1 = 0;
-		int n2 = 0;
+		int n = 0;
+		char* pipedArgs[100];
 		while(i < numPipes)
 		{
-			char * piped1[100];
-			char * piped2[100];
-			n1 = 0;
-			n2 = 0;
-			char* cmd1 = new char[strlen(args[i]) + 1];
-			strcpy(cmd1, args[i]);
-			i++;
-			char* cmd2 = new char[strlen(args[i]) + 1];
-			strcpy(cmd2, args[i]);
-			tokenizeSpace(cmd1, piped1, n1);
-			tokenizeSpace(cmd2, piped2, n2);
-			executePipeCommand(piped1, piped2);
+			n = 0;
+			char* cmd = new char[strlen(args[i]) + 1];
+			strcpy(cmd, args[i]);
+			tokenizeSpace(cmd, pipedArgs, n);
+
+			pipe(pipefd);
+			executePipeCommand(pipedArgs, pipeInput, pipefd[1], temp);
+			close(pipefd[1]);
+			pipeInput = pipefd[0];
+			deleteArgs(pipedArgs);
 			i++;
 		}
+		if(fork() == 0)
+		{
+		if(pipeInput != 0)
+		{
+			close(0);
+			dup(pipeInput);
+   		}
+		execvp(lastcmd[0], lastcmd);
+		}
+		else
+			wait(NULL);
 		return true;
 	}
 
