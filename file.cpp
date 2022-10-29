@@ -5,6 +5,7 @@
 #include <stdio.h>
 using namespace std;
 
+//Tokenize
 void tokenizeSpace(char str[], char** args, int &size)
 {
 	char *token = strtok(str, " ");
