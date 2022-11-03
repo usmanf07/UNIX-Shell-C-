@@ -74,7 +74,11 @@ void executeCommand(char s[])
 	else if(retVal==0)
 	{
 	//Child Process
-		execvp(args[0], args);
+		if (execvp(args[0], args) < 0) 
+		{
+			cout<<"Error: Cannot execute the "<<args[0]<<" command!";
+			return;
+		}
 	}
 	else
 	{
@@ -183,7 +187,11 @@ bool PipeCommand(char s[])
 			close(0);
 			dup(pipeInput);
    		}
-		execvp(lastcmd[0], lastcmd);
+			if(execvp(lastcmd[0], lastcmd)<0)
+			{
+				cout<<"Error: Could Not Execute "<<lastcmd[0]<<" command";
+				return true;
+			}
 		}
 		else
 			wait(NULL);
@@ -209,13 +217,6 @@ bool BuiltinCommand(char s[])
 
 	else if (strcmp(args[0], "cd") == 0){
 		chdir(args[1]);
-		return true;
-	}
-
-	else if (strcmp(args[0], "hello") == 0)
-	{
-		string user = getenv("USER");
-		cout<<"Hello "<<user<<", How Are You?";
 		return true;
 	}
 
