@@ -17,7 +17,7 @@ int redInputLoc;
 int redOutputLoc;
 vector<string> history;
 	
-int getCommandLength(char *args[])	//Function for getting lengths of commands
+int getCommandLength(char *args[])	//Function for getting number of commands
 {
     	int len = 0;
 	while(args[len] != NULL)
@@ -357,6 +357,7 @@ bool BuiltinCommand(char s[])
         	}
 		return true;
     	}
+    	
 	if(strcmp("!!",args[0]) == 0)
 	{
 		history.pop_back();
@@ -374,10 +375,35 @@ bool BuiltinCommand(char s[])
         	}
 		
     	}
+    	
+    	if(s[0] == '!')
+    	{
+    		int size = strlen(s);
+    		int index = 0;
+    		for(int i = 1; i < size; i++)
+    		{
+    			index = 10*index + (s[i] - '0');
+    		}
+    		
+    		history.pop_back();
+		if(history.size() > 0)
+		{	
+			index = history.size() - index;
+			cout<<"Executing command: "<<history[index]<<endl;
+			string temp = history[index];
+			strcpy(s, temp.c_str());
+			return false;
+		}
+		else
+        	{
+        		cout<<"There are no commands in history!"<<endl;
+        		return true;
+        	}
+    		return true;
+    	}
 
 	return false;
 }
-/////////////History Handling -- TBD//////////
 
 int main()
 {
