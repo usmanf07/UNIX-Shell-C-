@@ -52,19 +52,19 @@ void tokenizeSpace(char str[], char** args, int &size)
 	size = i - 1;
 }
 //Function for getting the redirection command without < > signs
-char *redirectArgs(char *args[], char *redArgs[]){
-    int len = getCommandLength(args);
-    int n = 0;
-    int m = 0;
-    while(args[n] != NULL){
-        if(strcmp(args[n],"<") != 0 && strcmp(args[n],">") != 0){
-            redArgs[m] = args[n];
-        }
-        else{
-            m--;
-        }
-        n++;
-        m++;
+char *redirectArgs(char *args[], char *redArgs[])
+{
+    int i = 0, j = 0;
+    while(args[i] != NULL)
+    {
+        if(strcmp(args[i],"<") != 0 && strcmp(args[i],">") != 0)
+            redArgs[j] = args[i];
+        
+        else
+            j--;
+        
+        i++;
+        j++;
     }
     
     return *redArgs;
@@ -345,10 +345,13 @@ bool BuiltinCommand(char s[])
 		history.pop_back();
 		if(history.size() > 0)
 		{
-			int j = history.size();
-			for (int i = 0; i < history.size(); i++) 
+			int size = 10;
+			if(history.size() < 10)
+				size = history.size();
+			
+			for (int i = 0; i < size; i++) 
 			{
-		    		cout << j-- <<": "<<history[i] << endl;
+		    		cout << i + 1 <<": "<<history[i] << endl;
 			}
         	}
         	else
@@ -380,20 +383,43 @@ bool BuiltinCommand(char s[])
     	{
     		int size = strlen(s);
     		int index = 0;
+    		bool flag = false;
     		for(int i = 1; i < size; i++)
     		{
-    			index = 10*index + (s[i] - '0');
+    			if(isdigit(s[i]))
+    			{
+    				index = 10*index + (s[i] - '0');
+    				flag = true;
+    			}
     		}
     		
     		history.pop_back();
+			
 		if(history.size() > 0)
 		{	
-			index = history.size() - index;
-			cout<<"Executing command: "<<history[index]<<endl;
-			string temp = history[index];
-			strcpy(s, temp.c_str());
-			return false;
+			if(flag && index < history.size())
+			{
+				if(index != 0)
+					index = history.size() - index;
+				else
+					index = 0;
+				cout<<"Executing command: "<<history[index]<<endl;
+				string temp = history[index];
+				strcpy(s, temp.c_str());
+				return false;
+			}
+			else if(index > history.size())
+			{
+				cout<<"There is no command on this index in history!"<<endl;
+				return true;
+			}
+			else
+			{
+				cout<<"Invalid history index access! Use it like this: !2 where 2 is the index number"<<endl;
+				return true;
+			}
 		}
+		
 		else
         	{
         		cout<<"There are no commands in history!"<<endl;
