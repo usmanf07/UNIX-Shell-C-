@@ -52,19 +52,19 @@ void tokenizeSpace(char str[], char** args, int &size)
 	size = i - 1;
 }
 //Function for getting the redirection command without < > signs
-char *redirectArgs(char *args[], char *redArgs[])
-{
-    int i = 0, j = 0;
-    while(args[i] != NULL)
-    {
-        if(strcmp(args[i],"<") != 0 && strcmp(args[i],">") != 0)
-            redArgs[j] = args[i];
-        
-        else
-            j--;
-        
-        i++;
-        j++;
+char *redirectArgs(char *args[], char *redArgs[]){
+    int len = getCommandLength(args);
+    int n = 0;
+    int m = 0;
+    while(args[n] != NULL){
+        if(strcmp(args[n],"<") != 0 && strcmp(args[n],">") != 0){
+            redArgs[m] = args[n];
+        }
+        else{
+            m--;
+        }
+        n++;
+        m++;
     }
     
     return *redArgs;
@@ -155,6 +155,7 @@ void executeCommand(char* args[])
 			else{
 			// Redirect using dup2
 			dup2(fd, 0);
+			dup2(fd, 2);
 			close(fd);
 			args[redInputLoc]=NULL;
 			}
@@ -168,6 +169,7 @@ void executeCommand(char* args[])
 			else{
 				// Redirect output using dup2 to file descriptor
 				dup2(fd, 1);
+				dup2(fd, 2);
 				close(fd);
 				args[redOutputLoc]=NULL;
 			}
@@ -345,13 +347,10 @@ bool BuiltinCommand(char s[])
 		history.pop_back();
 		if(history.size() > 0)
 		{
-			int size = 10;
-			if(history.size() < 10)
-				size = history.size();
-			
-			for (int i = 0; i < size; i++) 
+			int j = history.size();
+			for (int i = 0; i < history.size(); i++) 
 			{
-		    		cout << i + 1 <<": "<<history[i] << endl;
+		    		cout << j-- <<": "<<history[i] << endl;
 			}
         	}
         	else
@@ -383,43 +382,20 @@ bool BuiltinCommand(char s[])
     	{
     		int size = strlen(s);
     		int index = 0;
-    		bool flag = false;
     		for(int i = 1; i < size; i++)
     		{
-    			if(isdigit(s[i]))
-    			{
-    				index = 10*index + (s[i] - '0');
-    				flag = true;
-    			}
+    			index = 10*index + (s[i] - '0');
     		}
     		
     		history.pop_back();
-			
 		if(history.size() > 0)
 		{	
-			if(flag && index < history.size())
-			{
-				if(index != 0)
-					index = history.size() - index;
-				else
-					index = 0;
-				cout<<"Executing command: "<<history[index]<<endl;
-				string temp = history[index];
-				strcpy(s, temp.c_str());
-				return false;
-			}
-			else if(index > history.size())
-			{
-				cout<<"There is no command on this index in history!"<<endl;
-				return true;
-			}
-			else
-			{
-				cout<<"Invalid history index access! Use it like this: !2 where 2 is the index number"<<endl;
-				return true;
-			}
+			index = history.size() - index;
+			cout<<"Executing command: "<<history[index]<<endl;
+			string temp = history[index];
+			strcpy(s, temp.c_str());
+			return false;
 		}
-		
 		else
         	{
         		cout<<"There are no commands in history!"<<endl;
@@ -453,12 +429,15 @@ int main()
 			char* args[100];
 			int size = 0;
 			tokenizeSpace(temp, args, size);
+			
 			char *redArgs[1024];
 		    *redArgs = checkForRedirection(args, redArgs);		//3. Check if command has redirection signs else move next
 				if(redInputFlag == 1 || redOutputFlag == 1)
 				{
 				
 		            	executeCommand(redArgs);
+						redInputFlag = 0;
+						redOutputFlag = 0;
 		        }
 		        else
 		        {
