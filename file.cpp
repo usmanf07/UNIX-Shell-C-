@@ -155,6 +155,7 @@ void executeCommand(char* args[])
 			else{
 			// Redirect using dup2
 			dup2(fd, 0);
+			dup2(fd, 2);
 			close(fd);
 			args[redInputLoc]=NULL;
 			}
@@ -168,6 +169,7 @@ void executeCommand(char* args[])
 			else{
 				// Redirect output using dup2 to file descriptor
 				dup2(fd, 1);
+				dup2(fd, 2);
 				close(fd);
 				args[redOutputLoc]=NULL;
 			}
@@ -296,7 +298,6 @@ bool PipeCommand(char s[])
 			deleteArgs(pipedArgs);	//clear original array
 			i++;
 		}
-		//Execution for last command using one child
 		if(fork() == 0)
 		{
 			//child
@@ -305,9 +306,20 @@ bool PipeCommand(char s[])
 				close(0);
 				dup(pipeInput);
 			}
-			execvp(lastcmd[0], lastcmd);
-		}
-		else	//parent
+			//Execution for last command using one child
+			char *redArgs[1024];
+		    	*redArgs = checkForRedirection(lastcmd, redArgs);		//3. Check if command has redirection signs else move next
+			if(redInputFlag == 1 || redOutputFlag == 1)
+			{
+				executeCommand(redArgs);
+			}
+			else
+			{
+			    executeCommand(lastcmd);		//5. Execute simple commands without pipes or redirection
+			}
+			exit(0);
+	        }
+	        else	//parent
 			wait(NULL);
 		return true;
 	}
@@ -427,18 +439,25 @@ int main()
 			char* args[100];
 			int size = 0;
 			tokenizeSpace(temp, args, size);
+			
 			char *redArgs[1024];
-		    *redArgs = checkForRedirection(args, redArgs);		//3. Check if command has redirection signs else move next
+		    	*redArgs = checkForRedirection(args, redArgs);		//3. Check if command has redirection signs else move next
 				if(redInputFlag == 1 || redOutputFlag == 1)
 				{
-				
-		            	executeCommand(redArgs);
-		        }
+					executeCommand(redArgs);
+					redInputFlag = 0;
+					redOutputFlag = 0;
+				}
 		        else
 		        {
 		            executeCommand(args);		//5. Execute simple commands without pipes or redirection
 		        }
                 }
+                if(redInputFlag == 1 || redOutputFlag == 1)
+		{
+			redInputFlag = 0;
+			redOutputFlag = 0;
+		}
 			
 	}
 }
